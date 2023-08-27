@@ -1,8 +1,8 @@
 use super::node::NodeGraph;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tree {
-    nodes: NodeGraph,
+    pub nodes: NodeGraph,
 }
 
 impl Tree {

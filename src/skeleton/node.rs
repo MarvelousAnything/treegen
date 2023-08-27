@@ -1,3 +1,4 @@
+use indicatif::ProgressBar;
 use std::f64::consts::PI;
 
 use rayon::prelude::*;
@@ -5,7 +6,10 @@ use rayon::prelude::*;
 use image::RgbImage;
 use rand::Rng;
 
-use crate::utils::Point;
+use crate::utils::{
+    quadtree::{BoundingBox, Quadtree},
+    Point,
+};
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -42,14 +46,24 @@ impl Node {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeGraph {
-    nodes: Vec<Node>,
+    pub nodes: Vec<Node>,
+    pub quadtree: Quadtree,
 }
 
 impl NodeGraph {
     pub fn new() -> Self {
-        NodeGraph { nodes: Vec::new() }
+        let boundary = BoundingBox {
+            x: 0.0,
+            y: 0.0,
+            width: 400.0,
+            height: 400.0,
+        };
+        NodeGraph {
+            nodes: Vec::new(),
+            quadtree: Quadtree::new(boundary, 4),
+        }
     }
 
     pub fn add_node(
@@ -63,7 +77,7 @@ impl NodeGraph {
             let parent = &self.nodes[parent_index];
             parent.next_point()
         } else {
-            Point::new(800f64, 600f64)
+            Point::new(200f64, 400f64)
         };
         let new_node = Node {
             parent_index,
@@ -75,6 +89,7 @@ impl NodeGraph {
         };
 
         let node_index = self.nodes.len();
+        self.quadtree.insert(new_node.point, node_index);
         self.nodes.push(new_node);
 
         if let Some(parent_index) = parent_index {
@@ -85,8 +100,18 @@ impl NodeGraph {
     }
 
     fn is_black(&self, point: Point) -> bool {
-        self.iter(0)
-            .any(|node| node.is_valid(point, node.thickness))
+        let range = BoundingBox {
+            x: point.x - 1.0, // The size here is arbitrary and depends on your use case
+            y: point.y - 1.0,
+            width: 2.0,
+            height: 2.0,
+        };
+
+        let nearby_nodes = self.quadtree.query(range, Vec::new());
+        nearby_nodes.par_iter().any(|&point| {
+            let node: Node = self.nodes[point.1].clone();
+            node.is_valid(point.0, node.thickness)
+        })
     }
 
     pub fn generate_random_tree(&mut self, depth: usize, max_children: usize) {
@@ -110,9 +135,10 @@ impl NodeGraph {
         for _ in 0..num_children {
             let length = rng.gen_range(0.5..=1.0);
             let angle = -rng.gen_range(0.0..=1.0 * PI);
-            // let thickness = rng.gen_range(0.5..=1.0);
+            let thickness = rng.gen_range(0.5..=1.0);
 
-            let child_index = self.add_node(Some(parent_index), length * 100.0, angle, 3.0);
+            let child_index =
+                self.add_node(Some(parent_index), length * 100.0, angle, thickness * 5.0);
 
             if remaining_depth > 0 {
                 self.generate_random_subtree(child_index, remaining_depth - 1, max_children);
@@ -121,8 +147,8 @@ impl NodeGraph {
     }
 
     pub fn render_image(&self, filename: &str) {
-        let width = 1600;
-        let height = 1200;
+        let width = 400;
+        let height = 400;
         let mut image = RgbImage::new(width, height);
 
         // Calculate the number of bytes per row
@@ -132,6 +158,7 @@ impl NodeGraph {
         let img_buf = image.as_mut();
 
         // Parallelize row-wise
+        let bar = ProgressBar::new(width as u64 * height as u64);
         img_buf
             .par_chunks_mut(bytes_per_row as usize)
             .enumerate()
@@ -145,9 +172,10 @@ impl NodeGraph {
                         [(0.3 * x as f32) as u8, 0, (0.3 * y as f32) as u8]
                     };
                     row[offset as usize..offset as usize + 3].copy_from_slice(&pixel);
+                    bar.inc(1);
                 }
             });
-
+        bar.finish();
         image.save(filename).expect("could not save image");
     }
 

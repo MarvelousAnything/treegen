@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 
 use rayon::prelude::*;
 
-use image::{Rgb, RgbImage};
+use image::RgbImage;
 use rand::Rng;
 
 use crate::utils::Point;

@@ -1,6 +1,7 @@
 use std::ops::Sub;
 
 pub mod params;
+pub mod quadtree;
 
 pub type Line = (Point, Point);
 

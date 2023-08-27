@@ -1,4 +1,3 @@
-pub(crate) mod tree;
-pub(crate) mod node;
-pub(crate) mod parameters;
+pub mod tree;
+pub mod node;
 

@@ -1,3 +1,4 @@
+use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
 pub trait Sampler {
@@ -35,5 +36,16 @@ impl Sampler for GaussianSampler {
         let normal = Normal::new(self.mean, self.std_dev).unwrap();
         let mut rng = rand::thread_rng();
         normal.sample(&mut rng)
+    }
+}
+
+pub struct RandomSampler;
+
+impl Sampler for RandomSampler {
+    type SampleType = f64;
+
+    fn sample(&self) -> Self::SampleType {
+        let mut rng = rand::thread_rng();
+        rng.gen()
     }
 }

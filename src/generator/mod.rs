@@ -1,4 +1,7 @@
+use crate::skeleton::tree::Tree;
+
+pub mod layer;
+
 pub trait Generator {
-    fn create_node(&mut self);
-    fn add_child(&mut self);
+    fn generate(&self) -> Tree;
 }

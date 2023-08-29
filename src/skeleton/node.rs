@@ -1,15 +1,18 @@
+use imageproc::drawing::draw_polygon_mut;
 use indicatif::ProgressBar;
-use std::f64::consts::PI;
+use nalgebra::{Point2, Vector2};
 
 use rayon::prelude::*;
 
-use image::RgbImage;
-use rand::Rng;
+use image::{Rgb, RgbImage};
 
 use crate::utils::{
     quadtree::{BoundingBox, Quadtree},
     Point,
 };
+
+pub const WIDTH: usize = 400;
+pub const HEIGHT: usize = 800;
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -23,8 +26,8 @@ pub struct Node {
 
 impl Node {
     pub fn next_point(&self) -> Point {
-        let x = self.point.x + (self.length * self.angle.cos());
-        let y = self.point.y + (self.length * self.angle.sin());
+        let x = self.point.x + (self.length * self.angle.sin());
+        let y = self.point.y - (self.length * self.angle.cos());
         Point::new(x, y)
     }
 
@@ -57,8 +60,8 @@ impl NodeGraph {
         let boundary = BoundingBox {
             x: 0.0,
             y: 0.0,
-            width: 400.0,
-            height: 400.0,
+            width: WIDTH as f64,
+            height: HEIGHT as f64,
         };
         NodeGraph {
             nodes: Vec::new(),
@@ -77,7 +80,7 @@ impl NodeGraph {
             let parent = &self.nodes[parent_index];
             parent.next_point()
         } else {
-            Point::new(200f64, 400f64)
+            Point::new(WIDTH as f64 / 2.0, HEIGHT as f64)
         };
         let new_node = Node {
             parent_index,
@@ -103,52 +106,21 @@ impl NodeGraph {
         let range = BoundingBox {
             x: point.x - 1.0, // The size here is arbitrary and depends on your use case
             y: point.y - 1.0,
-            width: 2.0,
-            height: 2.0,
+            width: 10.0,
+            height: 10.0,
         };
 
         let nearby_nodes = self.quadtree.query(range, Vec::new());
+
         nearby_nodes.par_iter().any(|&point| {
             let node: Node = self.nodes[point.1].clone();
             node.is_valid(point.0, node.thickness)
         })
     }
 
-    pub fn generate_random_tree(&mut self, depth: usize, max_children: usize) {
-        self.nodes.clear();
-
-        if depth > 0 {
-            let root_index = self.add_node(None, 1.5, 0.0, 1.0);
-            self.generate_random_subtree(root_index, depth - 1, max_children);
-        }
-    }
-
-    fn generate_random_subtree(
-        &mut self,
-        parent_index: usize,
-        remaining_depth: usize,
-        max_children: usize,
-    ) {
-        let rng = &mut rand::thread_rng();
-
-        let num_children = rng.gen_range(1..=max_children);
-        for _ in 0..num_children {
-            let length = rng.gen_range(0.5..=1.0);
-            let angle = -rng.gen_range(0.0..=1.0 * PI);
-            let thickness = rng.gen_range(0.5..=1.0);
-
-            let child_index =
-                self.add_node(Some(parent_index), length * 100.0, angle, thickness * 5.0);
-
-            if remaining_depth > 0 {
-                self.generate_random_subtree(child_index, remaining_depth - 1, max_children);
-            }
-        }
-    }
-
     pub fn render_image(&self, filename: &str) {
-        let width = 400;
-        let height = 400;
+        let width = WIDTH as u32;
+        let height = HEIGHT as u32;
         let mut image = RgbImage::new(width, height);
 
         // Calculate the number of bytes per row
@@ -167,16 +139,50 @@ impl NodeGraph {
                     let offset = x * 3;
                     let point = Point::new(x as f64, y as f64);
                     let pixel = if self.is_black(point) {
-                        [1, 1, 1]
+                        [0, 0, 0]
                     } else {
-                        [(0.3 * x as f32) as u8, 0, (0.3 * y as f32) as u8]
+                        [255, 255, 255]
                     };
                     row[offset as usize..offset as usize + 3].copy_from_slice(&pixel);
                     bar.inc(1);
                 }
             });
         bar.finish();
+        // image.save(filename).expect("could not save image");
+        imageproc::window::display_image(filename, &image, width, height);
+    }
+
+    pub fn render_lined_image(&self, filename: &str) {
+        let width = WIDTH as u32;
+        let height = HEIGHT as u32;
+        let mut image = RgbImage::new(width, height);
+        for n in self.iter(0) {
+            let p1 = Point2::new(n.point.x, n.point.y);
+            let p2 = Point2::new(n.next_point().x, n.next_point().y);
+            // println!("p1: {p1}, p2: {p2}");
+
+            let direction = p2 - p1;
+            let normal = Vector2::new(-direction.y, direction.x).normalize();
+            // println!("direction: {direction}, normal: {normal}");
+
+            // Calculate the four corners of the rectangle
+            let corner1 = p1 + normal * n.thickness / 2.0;
+            let corner2 = p1 - normal * n.thickness / 2.0;
+            let corner3 = p2 - normal * n.thickness / 2.0;
+            let corner4 = p2 + normal * n.thickness / 2.0;
+
+            let corner1 = imageproc::point::Point::new(corner1.x as i32, corner1.y as i32);
+            let corner2 = imageproc::point::Point::new(corner2.x as i32, corner2.y as i32);
+            let corner3 = imageproc::point::Point::new(corner3.x as i32, corner3.y as i32);
+            let corner4 = imageproc::point::Point::new(corner4.x as i32, corner4.y as i32);
+
+            // println!("corner1: {corner1}, corner2: {corner2}, corner3: {corner3}, corner4: {corner4}");
+
+            // println!("thickness: {}\nangle: {}", n.thickness * 255.0, n.angle.abs() * 2550.0);
+            draw_polygon_mut(&mut image, &[corner1, corner2, corner3, corner4], Rgb([(n.thickness * 255.0).clamp(10.0, 255.0) as u8, 0, (n.angle.abs() * 255.0).clamp(10.0, 255.0) as u8]));
+        }
         image.save(filename).expect("could not save image");
+        // imageproc::window::display_image(filename, &image, width, height);
     }
 
     pub fn traverse(&self, start_index: usize, visitor: &mut dyn NodeVisitor) {

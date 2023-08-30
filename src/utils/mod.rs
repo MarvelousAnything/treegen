@@ -1,5 +1,7 @@
 use std::ops::Sub;
 
+use nalgebra::Point2;
+
 pub mod params;
 pub mod quadtree;
 
@@ -55,5 +57,17 @@ impl Sub for Point {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
+    }
+}
+
+impl From<Point> for imageproc::point::Point<i32> {
+    fn from(value: Point) -> Self {
+        imageproc::point::Point::new(value.x as i32, value.y as i32)
+    }
+}
+
+impl From<Point2<f64>> for Point {
+    fn from(value: Point2<f64>) -> Self {
+        Point::new(value.x, value.y)
     }
 }

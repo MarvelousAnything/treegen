@@ -22,6 +22,7 @@ pub struct Node {
     pub length: f64,
     pub angle: f64,
     pub thickness: f64,
+    pub color: Option<Rgb<u8>>,
 }
 
 impl Node {
@@ -46,6 +47,10 @@ impl Node {
         (point.x >= start.x.min(end.x) - edge_size && point.x <= start.x.max(end.x) + edge_size)
             && (point.y >= start.y.min(end.y) - edge_size
                 && point.y <= start.y.max(end.y) + edge_size)
+    }
+
+    pub fn set_color(&mut self, color: Rgb<u8>) {
+        self.color = Some(color);
     }
 }
 
@@ -89,6 +94,7 @@ impl NodeGraph {
             length,
             angle,
             thickness,
+            color: None,
         };
 
         let node_index = self.nodes.len();
@@ -179,7 +185,16 @@ impl NodeGraph {
             // println!("corner1: {corner1}, corner2: {corner2}, corner3: {corner3}, corner4: {corner4}");
 
             // println!("thickness: {}\nangle: {}", n.thickness * 255.0, n.angle.abs() * 2550.0);
-            draw_polygon_mut(&mut image, &[corner1, corner2, corner3, corner4], Rgb([(n.thickness * 255.0).clamp(10.0, 255.0) as u8, 0, (n.angle.abs() * 255.0).clamp(10.0, 255.0) as u8]));
+            let color = if let Some(color) = n.color {
+                color
+            } else {
+                Rgb([
+                    (n.thickness * 255.0).clamp(10.0, 255.0) as u8,
+                    0,
+                    (n.angle.abs() * 255.0).clamp(10.0, 255.0) as u8,
+                ])
+            };
+            draw_polygon_mut(&mut image, &[corner1, corner2, corner3, corner4], color);
         }
         image.save(filename).expect("could not save image");
         // imageproc::window::display_image(filename, &image, width, height);

@@ -1,6 +1,7 @@
 // use std::f64::consts::PI;
 
-use treegen::{skeleton::{node::NodeGraph, tree::Tree}, generator::{trunk_layer::TrunkLayer, layer::Layer, branch_layer::BranchLayer}};
+use image::RgbImage;
+use treegen::{skeleton::{node::{NodeGraph, WIDTH, HEIGHT}, tree::Tree}, generator::{trunk_layer::TrunkLayer, layer::Layer, branch_layer::BranchLayer}, rendering::{PolygonRenderer, Renderer}};
 
 fn main() {
     let mut tree = Tree { nodes: NodeGraph::new() };
@@ -13,5 +14,8 @@ fn main() {
     // println!("{tree:#?}");
     // tree.nodes.generate_random_tree(12, 12);
     println!("tree generated with {} nodes", tree.nodes.nodes.len());
-    tree.nodes.render_lined_image("tree.png");
+    let mut renderer = PolygonRenderer;
+    let mut image = RgbImage::new(WIDTH as u32, HEIGHT as u32);
+    renderer.render_tree(& mut image, &tree);
+    image.save("tree.png").expect("could not save image");
 }

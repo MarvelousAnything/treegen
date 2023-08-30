@@ -1,3 +1,4 @@
+use palette::{Srgb, cast::ArraysFrom};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashSet;
@@ -63,7 +64,7 @@ impl<'a> Layer<'a> for BranchLayer<'a> {
                 base_angle,
                 size,
             );
-            tree.nodes.nodes[new_node].set_color(image::Rgb(GREEN_COLOR));
+            tree.nodes.nodes[new_node].set_color(Srgb::from(GREEN_COLOR));
 
             // Recursive call for child node
             generate_branch(

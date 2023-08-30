@@ -1,12 +1,8 @@
 use crate::skeleton::tree::Tree;
 
-pub trait Layer<'a> {
+pub trait Layer<'a, Params> where Params : Copy {
     fn generate(
         &'a mut self,
-        spread: f64,
-        split: f64,
-        branch: f64,
-        variability: f64,
-        branch_height: f64,
+        params: Params
     ) -> &'a Tree;
 }

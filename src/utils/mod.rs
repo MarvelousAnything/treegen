@@ -2,7 +2,6 @@ use std::ops::Sub;
 
 use nalgebra::Point2;
 
-pub mod params;
 pub mod quadtree;
 
 pub type Line = (Point, Point);

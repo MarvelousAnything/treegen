@@ -9,17 +9,6 @@ use crate::skeleton::tree::Tree;
 
 use super::layer::Layer;
 
-pub const DEFAULT_BRANCH_LENGTH: f64 = 30.0;
-pub const DEFAULT_BRANCH_SIZE: f64 = 50.0;
-pub const BRANCH_SIZE_FALLOFF: f64 = 20.0;
-pub const DEFAULT_HEIGHT_MEAN: f64 = 10.0;
-pub const SPLIT_FALLOFF_PEAK: f64 = 5.0;
-pub const LEAN_BIAS: f64 = 0.0;
-pub const VARIABILITY_MODIFIER: f64 = 0.4;
-pub const ANGLE_SPREAD_POSITIVE: f64 = 10.0;
-pub const ANGLE_SPREAD_NEGATIVE: f64 = -10.0;
-pub const MAX_CHILDREN: usize = 5;
-
 pub struct TrunkLayer<'a> {
     pub tree: &'a mut Tree,
 }
@@ -30,6 +19,16 @@ pub struct TrunkParams {
     pub split: f64,
     pub branch: f64,
     pub variability: f64,
+    pub default_branch_length: f64,
+    pub default_branch_size: f64,
+    pub branch_size_falloff: f64,
+    pub default_height_mean: f64,
+    pub split_falloff_peak: f64,
+    pub lean_bias: f64,
+    pub variability_modifier: f64,
+    pub angle_spread_positive: f64,
+    pub angle_spread_negative: f64,
+    pub max_children: usize,
 }
 
 impl TrunkParams {
@@ -39,6 +38,16 @@ impl TrunkParams {
             split,
             branch,
             variability,
+            default_branch_length: 30.0,
+            default_branch_size: 50.0,
+            branch_size_falloff: 20.0,
+            default_height_mean: 10.0,
+            split_falloff_peak: 5.0,
+            lean_bias: 0.0,
+            variability_modifier: 0.4,
+            angle_spread_positive: 10.0,
+            angle_spread_negative: -10.0,
+            max_children: 5,
         }
     }
 }
@@ -49,16 +58,16 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
         params: TrunkParams
     ) -> &'a Tree {
         let mut rng = rand::thread_rng();
-        let normal = Normal::new(DEFAULT_HEIGHT_MEAN, 2.0 * params.variability).unwrap();
+        let normal = Normal::new(params.default_height_mean, 2.0 * params.variability).unwrap();
 
         let root = self.tree.add_node(None, 10f64, 0f64, 1f64);
         let mut tip_nodes: Vec<usize> = vec![root];
 
         let height = normal.sample(&mut rng);
-        let split_rate = |n: usize| params.split * (-(n as f64 - SPLIT_FALLOFF_PEAK).powi(2)).exp();
+        let split_rate = |n: usize| params.split * (-(n as f64 - params.split_falloff_peak).powi(2)).exp();
         let branch_rate =
             |n: usize| 3.0 * params.branch * (-(n as f64 - 0.0).powi(2)).div_euclid(100.0).exp();
-        let branch_size = |n: usize| DEFAULT_BRANCH_SIZE / ((n as f64) + BRANCH_SIZE_FALLOFF);
+        let branch_size = |n: usize| params.default_branch_size / ((n as f64) + params.branch_size_falloff);
 
         // Define a struct to store the intermediate data
         struct NodeToAdd {
@@ -81,13 +90,13 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
 
                     let current_node = self.tree.nodes.nodes[j].clone();
                     let size = branch_size(i);
-                    if current_node.children_indices.len() >= MAX_CHILDREN {
+                    if current_node.children_indices.len() >= params.max_children {
                         return vec![];
                     }
                     if is_split && j == split_index {
                         let normal = Normal::new(
-                            params.spread * ANGLE_SPREAD_POSITIVE.to_radians() + LEAN_BIAS.to_radians(),
-                            params.variability * VARIABILITY_MODIFIER,
+                            params.spread * params.angle_spread_positive.to_radians() + params.lean_bias.to_radians(),
+                            params.variability * params.variability_modifier,
                         )
                         .unwrap();
                         let angle_a = normal
@@ -95,8 +104,8 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
                             .to_radians()
                             .add(current_node.angle);
                         let normal = Normal::new(
-                            params.spread * ANGLE_SPREAD_NEGATIVE.to_radians() + LEAN_BIAS.to_radians(),
-                            params.variability * VARIABILITY_MODIFIER,
+                            params.spread * params.angle_spread_negative.to_radians() + params.lean_bias.to_radians(),
+                            params.variability * params.variability_modifier,
                         )
                         .unwrap();
                         let angle_b = normal
@@ -107,27 +116,27 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
                         vec![
                             NodeToAdd {
                                 parent_index: j,
-                                length: DEFAULT_BRANCH_LENGTH,
+                                length: params.default_branch_length,
                                 angle: angle_a,
                                 size,
                             },
                             NodeToAdd {
                                 parent_index: j,
-                                length: DEFAULT_BRANCH_LENGTH,
+                                length: params.default_branch_length,
                                 angle: angle_b,
                                 size,
                             },
                         ]
                     } else if should_branch {
                         let normal = Normal::new(
-                            LEAN_BIAS.to_radians(),
-                            params.spread * params.variability * VARIABILITY_MODIFIER,
+                            params.lean_bias.to_radians(),
+                            params.spread * params.variability * params.variability_modifier,
                         )
                         .unwrap();
                         let angle = normal.sample(&mut local_rng);
                         vec![NodeToAdd {
                             parent_index: j,
-                            length: DEFAULT_BRANCH_LENGTH,
+                            length: params.default_branch_length,
                             angle,
                             size,
                         }]

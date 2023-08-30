@@ -16,25 +16,35 @@ pub struct BranchParams {
     pub spread: f64,
     pub branch: f64,
     pub variability: f64,
+    pub base_size_reduction: f64,
+    pub minimum_size: f64,
+    pub initial_branch_size: f64,
+    pub initial_length: f64,
+    pub base_angle_mean_deg: f64,
+    pub base_angle_std_dev_deg: f64,
+    pub color: [u8; 3],
 }
 
 impl BranchParams {
-    pub fn new(spread: f64, branch: f64, variability: f64) -> Self {
+    pub fn new(
+        spread: f64,
+        branch: f64,
+        variability: f64,
+    ) -> Self {
         Self {
             spread,
             branch,
             variability,
+            base_size_reduction: 0.1,
+            minimum_size: 0.6,
+            initial_branch_size: 0.9,
+            initial_length: 10.0,
+            base_angle_mean_deg: 20.0,
+            base_angle_std_dev_deg: 5.0,
+            color: [0, 255, 0],
         }
     }
 }
-
-const BASE_SIZE_REDUCTION: f64 = 0.1;
-const MINIMUM_SIZE: f64 = 0.6;
-const INITIAL_BRANCH_SIZE: f64 = 0.9;
-const INITIAL_LENGTH: f64 = 10.0;
-const BASE_ANGLE_MEAN_DEG: f64 = 20.0;
-const BASE_ANGLE_STD_DEV_DEG: f64 = 5.0;
-const GREEN_COLOR: [u8; 3] = [0, 255, 0];
 
 impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
     fn generate(&'a mut self, params: BranchParams) -> &'a Tree {
@@ -42,15 +52,15 @@ impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
 
         let mut processed_nodes = HashSet::new();
 
-        // Nested function for recursive branch generation
         fn generate_branch(
             node: usize,
             tree: &mut Tree,
             size: f64,
             branch: f64,
             processed_nodes: &mut HashSet<usize>,
+            params: &BranchParams,
         ) {
-            if size <= MINIMUM_SIZE || processed_nodes.contains(&node) {
+            if size <= params.minimum_size || processed_nodes.contains(&node) {
                 return;
             }
             let mut local_rng = rand::thread_rng();
@@ -62,20 +72,21 @@ impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
                 return;
             }
             let base_angle_normal =
-                Normal::new(BASE_ANGLE_MEAN_DEG, BASE_ANGLE_STD_DEV_DEG).unwrap();
+                Normal::new(params.base_angle_mean_deg, params.base_angle_std_dev_deg).unwrap();
             let base_angle = base_angle_normal.sample(&mut local_rng).to_radians();
 
             // Logic for creating sub-branches
-            let new_node = tree.add_node(Some(node), INITIAL_LENGTH, base_angle, size);
-            tree.nodes.nodes[new_node].set_color(Srgb::from(GREEN_COLOR));
+            let new_node = tree.add_node(Some(node), params.initial_length, base_angle, size);
+            tree.nodes.nodes[new_node].set_color(Srgb::from(params.color));
 
             // Recursive call for child node
             generate_branch(
                 new_node,
                 tree,
-                size - BASE_SIZE_REDUCTION,
+                size - params.base_size_reduction,
                 branch,
                 processed_nodes,
+                params
             );
         }
 
@@ -83,9 +94,10 @@ impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
             generate_branch(
                 node,
                 self.tree,
-                INITIAL_BRANCH_SIZE,
+                params.initial_branch_size,
                 params.branch,
                 &mut processed_nodes,
+                &params
             );
         });
 

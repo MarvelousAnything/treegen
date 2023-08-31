@@ -5,7 +5,7 @@ use palette::Srgb;
 use crate::utils::quadtree::{BoundingBox, Quadtree};
 
 pub const WIDTH: usize = 400;
-pub const HEIGHT: usize = 800;
+pub const HEIGHT: usize = 400;
 
 pub type Point = Point2<f64>;
 

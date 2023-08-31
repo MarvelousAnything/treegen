@@ -1,4 +1,5 @@
 use druid::{Data, Lens};
+use palette::Srgb;
 use rayon::prelude::*;
 use std::ops::Add;
 
@@ -27,7 +28,7 @@ pub struct TrunkParams {
     pub variability_modifier: f64,
     pub angle_spread_positive: f64,
     pub angle_spread_negative: f64,
-    pub max_children: usize,
+    pub max_children: f64,
 }
 
 impl TrunkParams {
@@ -39,41 +40,45 @@ impl TrunkParams {
             variability,
             default_branch_length: 30.0,
             default_branch_size: 50.0,
-            branch_size_falloff: 20.0,
+            branch_size_falloff: 2.0,
             default_height_mean: 10.0,
             split_falloff_peak: 5.0,
             lean_bias: 0.0,
             variability_modifier: 0.4,
             angle_spread_positive: 10.0,
             angle_spread_negative: -10.0,
-            max_children: 5,
+            max_children: 5.0,
         }
     }
 }
 
 impl Layer<TrunkParams> for TrunkLayer {
-    fn generate(
-        mut tree: Tree,
-        params: &TrunkParams
-    ) -> Tree {
+    fn generate(mut tree: Tree, params: &TrunkParams) -> Tree {
         let mut rng = rand::thread_rng();
         let normal = Normal::new(params.default_height_mean, 2.0 * params.variability).unwrap();
 
-        let root = tree.add_node(None, 10f64, 0f64, 1f64);
+        let height = normal.sample(&mut rng);
+
+        let max_size = params.default_branch_size / params.branch_size_falloff;
+        let min_size =
+            params.default_branch_size / (params.default_height_mean + params.branch_size_falloff);
+
+        let root = tree.add_node(None, 2.0 * height, 0f64, max_size);
         let mut tip_nodes: Vec<usize> = vec![root];
 
-        let height = normal.sample(&mut rng);
-        let split_rate = |n: usize| params.split * (-(n as f64 - params.split_falloff_peak).powi(2)).exp();
+        let split_rate =
+            |n: usize| params.split * (-(n as f64 - params.split_falloff_peak).powi(2)).exp();
         let branch_rate =
             |n: usize| 3.0 * params.branch * (-(n as f64 - 0.0).powi(2)).div_euclid(100.0).exp();
-        let branch_size = |n: usize| params.default_branch_size / ((n as f64) + params.branch_size_falloff);
+        let branch_size =
+            |n: usize| params.default_branch_size / ((n as f64) + params.branch_size_falloff);
 
-        // Define a struct to store the intermediate data
         struct NodeToAdd {
             parent_index: usize,
             length: f64,
             angle: f64,
             size: f64,
+            color: Srgb<u8>,
         }
 
         for i in 0..height as usize {
@@ -88,12 +93,14 @@ impl Layer<TrunkParams> for TrunkLayer {
 
                     let current_node = tree.nodes.nodes[j].clone();
                     let size = branch_size(i);
-                    if current_node.children_indices.len() >= params.max_children {
+                    let color = Srgb::new(((225.0 * (size - min_size) / (max_size - min_size)) + 30.0) as u8, 0, 0);
+                    if current_node.children_indices.len() >= params.max_children as usize {
                         return vec![];
                     }
                     if is_split && j == split_index {
                         let normal = Normal::new(
-                            params.spread * params.angle_spread_positive.to_radians() + params.lean_bias.to_radians(),
+                            params.spread * params.angle_spread_positive.to_radians()
+                                + params.lean_bias.to_radians(),
                             params.variability * params.variability_modifier,
                         )
                         .unwrap();
@@ -102,7 +109,8 @@ impl Layer<TrunkParams> for TrunkLayer {
                             .to_radians()
                             .add(current_node.angle);
                         let normal = Normal::new(
-                            params.spread * params.angle_spread_negative.to_radians() + params.lean_bias.to_radians(),
+                            params.spread * params.angle_spread_negative.to_radians()
+                                + params.lean_bias.to_radians(),
                             params.variability * params.variability_modifier,
                         )
                         .unwrap();
@@ -117,12 +125,14 @@ impl Layer<TrunkParams> for TrunkLayer {
                                 length: params.default_branch_length,
                                 angle: angle_a,
                                 size,
+                                color,
                             },
                             NodeToAdd {
                                 parent_index: j,
                                 length: params.default_branch_length,
                                 angle: angle_b,
                                 size,
+                                color,
                             },
                         ]
                     } else if should_branch {
@@ -137,6 +147,7 @@ impl Layer<TrunkParams> for TrunkLayer {
                             length: params.default_branch_length,
                             angle,
                             size,
+                            color,
                         }]
                     } else {
                         vec![]
@@ -151,6 +162,7 @@ impl Layer<TrunkParams> for TrunkLayer {
                     new_tip.angle,
                     new_tip.size,
                 );
+                tree.nodes.nodes[node_index].color = Some(new_tip.color);
                 tip_nodes.push(node_index);
             }
         }

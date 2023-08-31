@@ -28,3 +28,9 @@ impl Tree {
             .collect()
     }
 }
+
+impl Default for Tree {
+    fn default() -> Self {
+        Self::new()
+    }
+}

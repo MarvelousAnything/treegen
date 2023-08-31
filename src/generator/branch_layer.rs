@@ -48,6 +48,7 @@ impl BranchParams {
 
 impl Layer<BranchParams> for BranchLayer {
     fn generate(mut tree: Tree, params: &BranchParams) -> Tree {
+        return tree;
         let tip_nodes = tree.get_tip_nodes();
 
         let mut processed_nodes = HashSet::new();
@@ -97,7 +98,7 @@ impl Layer<BranchParams> for BranchLayer {
                 params.initial_branch_size,
                 params.branch,
                 &mut processed_nodes,
-                &params
+                params
             );
         });
 

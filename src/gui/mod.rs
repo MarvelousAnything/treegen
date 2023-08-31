@@ -1,11 +1,25 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
 
-use druid::{Widget, Data, Lens, EventCtx, Event, Env, LifeCycleCtx, LifeCycle, UpdateCtx, LayoutCtx, BoxConstraints, Size, PaintCtx, RenderContext, piet::{ImageFormat, InterpolationMode}, Selector};
+use druid::{
+    piet::{ImageFormat, InterpolationMode},
+    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, Lens, LifeCycle, LifeCycleCtx, PaintCtx,
+    RenderContext, Selector, Size, UpdateCtx, Widget,
+};
 use image::DynamicImage;
 
-use crate::{generator::{trunk_layer::TrunkParams, branch_layer::BranchParams}, skeleton::tree::Tree};
+use crate::{
+    generator::{
+        branch_layer::BranchParams,
+        trunk_layer::TrunkParams,
+    },
+    skeleton::tree::Tree,
+};
 
 pub const UPDATE_IMAGE: Selector = Selector::new("treegen.update-image");
+pub const ADJUST_SLIDER: Selector = Selector::new("treegen.adjust_slider");
 
 #[derive(Debug, Clone, Data, Lens)]
 pub struct AppData {
@@ -14,6 +28,7 @@ pub struct AppData {
     pub tree: Rc<RefCell<Tree>>,
     pub image: Rc<RefCell<DynamicImage>>,
     pub image_updated: bool,
+    pub auto_generate: bool,
 }
 
 pub struct DynamicImageWidget;
@@ -27,25 +42,46 @@ impl Widget<AppData> for DynamicImageWidget {
         }
     }
 
-    fn lifecycle(&mut self, _ctx: &mut LifeCycleCtx, _event: &LifeCycle, _data: &AppData, _env: &Env) {
+    fn lifecycle(
+        &mut self,
+        _ctx: &mut LifeCycleCtx,
+        _event: &LifeCycle,
+        _data: &AppData,
+        _env: &Env,
+    ) {
     }
 
-    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &AppData, _data: &AppData, _env: &Env) {
-    }
+    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &AppData, _data: &AppData, _env: &Env) {}
 
-    fn layout(&mut self, _ctx: &mut LayoutCtx, bc: &BoxConstraints, _data: &AppData, _env: &Env) -> Size {
+    fn layout(
+        &mut self,
+        _ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        _data: &AppData,
+        _env: &Env,
+    ) -> Size {
         bc.max()
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &AppData, _env: &Env) {
         let image_data = data.image.borrow().to_rgb8();
-        let image = ctx.make_image(image_data.width() as usize, image_data.height() as usize, &image_data, ImageFormat::Rgb).unwrap();
+        let image = ctx
+            .make_image(
+                image_data.width() as usize,
+                image_data.height() as usize,
+                &image_data,
+                ImageFormat::Rgb,
+            )
+            .unwrap();
 
         let size = ctx.size();
         let scale_x = size.width / image_data.width() as f64;
         let scale_y = size.height / image_data.height() as f64;
         let scale = scale_x.min(scale_y);
-        let scaled_size = Size::new(image_data.width() as f64 * scale, image_data.height() as f64 * scale);
+        let scaled_size = Size::new(
+            image_data.width() as f64 * scale,
+            image_data.height() as f64 * scale,
+        );
         ctx.draw_image(&image, scaled_size.to_rect(), InterpolationMode::Bilinear)
     }
 }

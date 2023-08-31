@@ -20,13 +20,13 @@ use treegen::{
 };
 
 macro_rules! create_sliders {
-    ($param_struct:ident, $param_field:ident, $label:expr, $($field:ident),+ $(,)? ) => {{
+    ($param_struct:ident, $param_field:ident, $label:expr, $($field:ident{$lo:expr, $hi:expr}),+ $(,)? ) => {{
         let mut col = Flex::column();
         col.add_child(Label::new($label).align_left());
 
         $(
             let lens = AppData::$param_field.then($param_struct::$field);
-            let slider = Slider::new().with_range(0.0f64, 1.0f64).lens(lens).padding(5.0);
+            let slider = Slider::new().with_range($lo, $hi).lens(lens).padding(5.0);
             let label = Label::new(move |data: &f64, _env: &_| format!("{}: {:.2}", stringify!($field), data))
                           .lens(lens);
             col.add_flex_child(Flex::row().with_child(label).with_flex_child(slider, 1.0), 1.0);
@@ -41,10 +41,11 @@ fn make_trunk_sliders() -> impl Widget<AppData> {
         TrunkParams,
         trunk_params,
         "Trunk Params",
-        spread,
-        split,
-        branch,
-        variability
+        spread{0.0,1.0},
+        split{0.0,1.0},
+        branch{0.0,1.0},
+        variability{0.0,1.0},
+        lean_bias{0.0,90.0},
     )
 }
 
@@ -53,9 +54,9 @@ fn make_branch_sliders() -> impl Widget<AppData> {
         BranchParams,
         branch_params,
         "Branch Params",
-        spread,
-        branch,
-        variability
+        spread{0.0,1.0},
+        branch{0.0,1.0},
+        variability{0.0,1.0}
     )
 }
 

@@ -1,5 +1,4 @@
 use druid::{Data, Lens};
-use indicatif::{ParallelProgressIterator, ProgressIterator};
 use rayon::prelude::*;
 use std::ops::Add;
 
@@ -77,13 +76,12 @@ impl Layer<TrunkParams> for TrunkLayer {
             size: f64,
         }
 
-        for i in (0..height as usize).progress() {
+        for i in 0..height as usize {
             let is_split = rng.gen::<f64>() < split_rate(i);
             let split_index = rng.gen_range(0..tip_nodes.len());
 
             let new_tips: Vec<NodeToAdd> = tip_nodes
                 .par_iter()
-                .progress()
                 .flat_map(|&j| {
                     let mut local_rng = rand::thread_rng();
                     let should_branch = local_rng.gen::<f64>() < branch_rate(i);

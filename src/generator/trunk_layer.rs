@@ -1,3 +1,4 @@
+use druid::{Data, Lens};
 use indicatif::{ParallelProgressIterator, ProgressIterator};
 use rayon::prelude::*;
 use std::ops::Add;
@@ -9,11 +10,10 @@ use crate::skeleton::tree::Tree;
 
 use super::layer::Layer;
 
-pub struct TrunkLayer<'a> {
-    pub tree: &'a mut Tree,
-}
+#[derive(Debug)]
+pub struct TrunkLayer;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Data, Lens)]
 pub struct TrunkParams {
     pub spread: f64,
     pub split: f64,
@@ -52,15 +52,15 @@ impl TrunkParams {
     }
 }
 
-impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
+impl Layer<TrunkParams> for TrunkLayer {
     fn generate(
-        &'a mut self,
-        params: TrunkParams
-    ) -> &'a Tree {
+        mut tree: Tree,
+        params: &TrunkParams
+    ) -> Tree {
         let mut rng = rand::thread_rng();
         let normal = Normal::new(params.default_height_mean, 2.0 * params.variability).unwrap();
 
-        let root = self.tree.add_node(None, 10f64, 0f64, 1f64);
+        let root = tree.add_node(None, 10f64, 0f64, 1f64);
         let mut tip_nodes: Vec<usize> = vec![root];
 
         let height = normal.sample(&mut rng);
@@ -88,7 +88,7 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
                     let mut local_rng = rand::thread_rng();
                     let should_branch = local_rng.gen::<f64>() < branch_rate(i);
 
-                    let current_node = self.tree.nodes.nodes[j].clone();
+                    let current_node = tree.nodes.nodes[j].clone();
                     let size = branch_size(i);
                     if current_node.children_indices.len() >= params.max_children {
                         return vec![];
@@ -147,7 +147,7 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
                 .collect();
 
             for new_tip in new_tips {
-                let node_index = self.tree.add_node(
+                let node_index = tree.add_node(
                     Some(new_tip.parent_index),
                     new_tip.length,
                     new_tip.angle,
@@ -157,6 +157,6 @@ impl<'a> Layer<'a, TrunkParams> for TrunkLayer<'a> {
             }
         }
 
-        self.tree
+        tree
     }
 }

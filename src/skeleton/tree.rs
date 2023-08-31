@@ -6,6 +6,9 @@ pub struct Tree {
 }
 
 impl Tree {
+    pub fn new() -> Self {
+        Self { nodes: NodeGraph::new() }
+    }
     pub fn add_node(
         &mut self,
         parent: Option<usize>,

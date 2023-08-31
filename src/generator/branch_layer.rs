@@ -1,3 +1,4 @@
+use druid::{Data, Lens};
 use palette::Srgb;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
@@ -7,11 +8,10 @@ use crate::skeleton::tree::Tree;
 
 use super::layer::Layer;
 
-pub struct BranchLayer<'a> {
-    pub tree: &'a mut Tree,
-}
+#[derive(Debug)]
+pub struct BranchLayer;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Data, Lens)]
 pub struct BranchParams {
     pub spread: f64,
     pub branch: f64,
@@ -46,9 +46,9 @@ impl BranchParams {
     }
 }
 
-impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
-    fn generate(&'a mut self, params: BranchParams) -> &'a Tree {
-        let tip_nodes = self.tree.get_tip_nodes();
+impl Layer<BranchParams> for BranchLayer {
+    fn generate(mut tree: Tree, params: &BranchParams) -> Tree {
+        let tip_nodes = tree.get_tip_nodes();
 
         let mut processed_nodes = HashSet::new();
 
@@ -93,7 +93,7 @@ impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
         tip_nodes.iter().for_each(|&node| {
             generate_branch(
                 node,
-                self.tree,
+                &mut tree,
                 params.initial_branch_size,
                 params.branch,
                 &mut processed_nodes,
@@ -101,6 +101,6 @@ impl<'a> Layer<'a, BranchParams> for BranchLayer<'a> {
             );
         });
 
-        self.tree
+        tree
     }
 }

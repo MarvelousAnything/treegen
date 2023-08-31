@@ -10,7 +10,7 @@ debug = true
 cached = "0.44.0"
 druid = { version = "0.8.3", features = ["image", "png"] }
 image = "0.24.7"
-imageproc = { version = "0.23.0", features = ["display-window"] }
+imageproc = { version = "0.23.0" }
 indicatif = { version = "0.17.6", features = ["rayon"] }
 nalgebra = "0.32.3"
 num-complex = "0.4.4"
